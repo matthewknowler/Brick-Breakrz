@@ -1,0 +1,285 @@
+import pygame
+from pygame.locals import *
+from sys import exit
+import random
+
+ENDGAME = False
+
+score = 0
+lives = 3
+
+screen_width = 648
+screen_height = 600
+
+
+class Ball:
+
+    def __init__(self):
+        self.diameter = 7
+
+        # ball speed
+        self.xy_gain = 4
+
+        # place ball at a random coordinate inside the empty area
+        self.x = random.randint(100, screen_width - 100)
+        self.y = random.randint(200, screen_height - 200)
+
+        # set ball to go in random southern direction
+        direction = random.randint(1, 2)
+        if direction == 1:
+            self.angle = 'SE'
+        elif direction == 2:
+            self.angle = 'SW'
+
+    def move(self):
+        '''moves ball in the appropriate direction'''
+        if self.angle == 'NE':
+            self.y -= self.xy_gain
+            self.x += self.xy_gain
+        elif self.angle == 'NW':
+            self.y -= self.xy_gain
+            self.x -= self.xy_gain
+        elif self.angle == 'SE':
+            self.y += self.xy_gain
+            self.x += self.xy_gain
+        elif self.angle == 'SW':
+            self.y += self.xy_gain
+            self.x -= self.xy_gain
+
+    def update(self):
+        '''redraws the ball'''
+        screen.blit(ball_img, (self.x, self.y))
+
+    def hit_wall(self):
+        '''changes direction of ball when it hits a block, wall,
+           or paddle. Ends game if ball goes off the screen'''
+
+        global lives
+
+        # touching left side
+        if self.x - self.diameter <= 40:
+            if self.angle == 'NW':
+                self.angle = 'NE'
+            elif self.angle == 'SW':
+                self.angle = 'SE'
+
+        # touching top
+        elif self.y - self.diameter <= 40:
+            if self.angle == 'NE':
+                self.angle = 'SE'
+            elif self.angle == 'NW':
+                self.angle = 'SW'
+
+        # touching right side
+        elif self.x + self.diameter >= screen_width - 40:
+            if self.angle == 'SE':
+                self.angle = 'SW'
+            elif self.angle == 'NE':
+                self.angle = 'NW'
+
+        # touching paddle
+        elif self.y >= paddle.y - self.diameter and self.y < paddle.y:
+            if self.x >= paddle.x and self.x < paddle.x + paddle.width:
+                self.y -= 1
+                if self.angle == 'SE':
+                    self.angle = 'NE'
+                elif self.angle == 'SW':
+                    self.angle = 'NW'
+
+        # # taking place of paddle for debugging REMOVE FOR FINAL GAME
+        # if self.y >= paddle.y:
+        #     if self.angle == 'SE':
+        #         self.angle = 'NE'
+        #     elif self.angle == 'SW':
+        #         self.angle = 'NW'
+
+        # reset ball and decrement lives if it flew off the bottom
+        elif self.y > screen_height + 20:
+            lives -= 1
+
+            # place ball at a random coordinate inside the empty area
+            self.x = random.randint(100, screen_width - 100)
+            self.y = random.randint(200, screen_height - 200)
+
+            # set ball to go in random southern direction
+            direction = random.randint(1, 2)
+            if direction == 1:
+                self.angle = 'SE'
+            elif direction == 2:
+                self.angle = 'SW'
+
+
+class Block:
+    def __init__(self, x, y):
+        self.width = 75
+        self.height = 20
+        self.x = x
+        self.y = y
+
+    def update(self):
+        '''redraws block'''
+        screen.blit(block_img, (self.x, self.y))
+
+    def check_collision(self):
+        '''changes direction of ball according to what side of block it touches'''
+        if ball.x >= self.x and ball.x <= self.x + self.width:
+            # touching bottom
+            if ball.y <= self.y + self.height and ball.y <= self.y + self.height + 1:
+                if ball.angle == 'NE':
+                    ball.angle = 'SE'
+                elif ball.angle == 'NW':
+                    ball.angle = 'SW'
+                return True
+
+            # touching top
+            elif ball.y <= self.y - ball.diameter and ball.y > self.y - ball.diameter - 1:
+                if ball.angle == 'SE':
+                    ball.angle = 'NE'
+                elif ball.angle == 'SW':
+                    ball.angle = 'NW'
+                return True
+
+        elif ball.y >= self.y and ball.y <= self.y + self.height:
+            # touching left side
+            if ball.x >= self.x - ball.diameter and ball.x <= self.x + ball.diameter:
+                if ball.angle == 'NE':
+                    ball.angle = 'NW'
+                elif ball.angle == 'SE':
+                    ball.angle = 'SW'
+                return True
+
+            # touching right side
+            elif ball.x >= self.x + self.width and ball.x <= self.x + self.width + ball.diameter:
+                if ball.angle == 'NW':
+                    ball.angle = 'NE'
+                elif ball.angle == 'SW':
+                    ball.angle = 'SE'
+                return True
+
+        return False
+
+
+class Paddle:
+
+    def __init__(self):
+        self.x = screen_width / 2 # start paddle at middle of screen
+        self.y = screen_height - 60 # position paddle some distance from bottom of screen
+
+        # dimensions
+        self.width = 80
+        self.height = 10
+
+    def update(self):
+        '''redraws paddle wherever mouse is pointed'''
+        self.x, ignore = pygame.mouse.get_pos()
+        screen.blit(paddle_img, (self.x, self.y))
+
+
+def display(message):
+    '''displays score and lives'''
+    font = pygame.font.Font(None, 40)
+    text = font.render(message, 1, (175, 4, 4))
+    screen.blit(text, (8, 8))
+
+def check_lives():
+    '''checks if player has enough lives'''
+    global ENDGAME
+
+    if lives <= 0:
+        ENDGAME = True
+
+#***** Setting up game ******
+pygame.init()
+
+
+#******* Setting up screen ******
+screen = pygame.display.set_mode((screen_width, screen_height))
+pygame.display.set_caption('Brick Breakrz')
+
+
+#**** Setting up images *****
+# paddle
+paddle_img = pygame.image.load('paddle.png').convert()
+
+# blocks
+block_img = pygame.image.load('brick.png').convert()
+
+# ball
+ball_img = pygame.image.load('ball.png').convert()
+
+# background
+background = pygame.image.load('background.png').convert()
+
+
+#********* Setting up blocks ********
+blocks = []
+
+block_width_plus_padding = 76
+block_height_plus_padding = 21
+x_padding = 57
+y_padding = 55
+
+row = 0
+column = 0
+for _ in range(0, 56):
+    # keep blocks from going off the screen
+    if (x_padding + column * block_width_plus_padding > \
+            screen_width - block_width_plus_padding):
+        row += 1
+        column = 0
+
+    # pass in coordinates and append block object to list
+    blocks.append(Block((x_padding + column * block_width_plus_padding), \
+                            (y_padding + row * block_height_plus_padding)))
+
+    # move to next column
+    column += 1
+
+
+#***** Setting up paddle and ball ******
+paddle = Paddle()
+
+ball = Ball()
+
+clock = pygame.time.Clock()
+
+
+#********* Game Loop **********
+while ENDGAME == False:
+    for event in pygame.event.get():
+        if event.type == QUIT:
+            exit()
+
+    # fill screen with white then render
+    # background image before other objects
+    screen.fill((255, 255, 255))
+    screen.blit(background, (0,0))
+
+    ball.move()
+    ball.update()
+    ball.hit_wall()
+
+    paddle.update()
+
+    check_lives()
+
+    for block in blocks:
+        ball_hit_block = block.check_collision()
+
+        if ball_hit_block == True:
+            # throw block off the screen if hit
+            block.x = -100
+            block.y = 0
+
+            score += 1
+
+        # update block
+        block.update()
+
+    # display score and lives
+    display('Score: ' + str(score) + '  Lives: ' + str(lives))
+
+    pygame.display.update()
+
+    # 60 frames per second
+    clock.tick(60)
