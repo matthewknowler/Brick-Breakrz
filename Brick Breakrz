@@ -4,9 +4,12 @@ from sys import exit
 import random
 
 ENDGAME = False
+win = False
 
 score = 0
 lives = 3
+
+num_blocks = 49
 
 screen_width = 648
 screen_height = 600
@@ -85,13 +88,6 @@ class Ball:
                     self.angle = 'NE'
                 elif self.angle == 'SW':
                     self.angle = 'NW'
-
-        # # taking place of paddle for debugging REMOVE FOR FINAL GAME
-        # if self.y >= paddle.y:
-        #     if self.angle == 'SE':
-        #         self.angle = 'NE'
-        #     elif self.angle == 'SW':
-        #         self.angle = 'NW'
 
         # reset ball and decrement lives if it flew off the bottom
         elif self.y > screen_height + 20:
@@ -181,11 +177,15 @@ def display(message):
     text = font.render(message, 1, (175, 4, 4))
     screen.blit(text, (8, 8))
 
-def check_lives():
+def check_lives_and_score():
     '''checks if player has enough lives'''
-    global ENDGAME
+    global ENDGAME, win
 
     if lives <= 0:
+        ENDGAME = True
+
+    if score >= num_blocks:
+        win = True
         ENDGAME = True
 
 #***** Setting up game ******
@@ -221,7 +221,7 @@ y_padding = 55
 
 row = 0
 column = 0
-for _ in range(0, 56):
+for _ in range(0, num_blocks):
     # keep blocks from going off the screen
     if (x_padding + column * block_width_plus_padding > \
             screen_width - block_width_plus_padding):
@@ -236,7 +236,7 @@ for _ in range(0, 56):
     column += 1
 
 
-#***** Setting up paddle and ball ******
+#***** Setting up paddle, ball, and clock ******
 paddle = Paddle()
 
 ball = Ball()
@@ -246,6 +246,7 @@ clock = pygame.time.Clock()
 
 #********* Game Loop **********
 while ENDGAME == False:
+    # check if player closed game
     for event in pygame.event.get():
         if event.type == QUIT:
             exit()
@@ -261,7 +262,7 @@ while ENDGAME == False:
 
     paddle.update()
 
-    check_lives()
+    check_lives_and_score()
 
     for block in blocks:
         ball_hit_block = block.check_collision()
@@ -283,3 +284,26 @@ while ENDGAME == False:
 
     # 60 frames per second
     clock.tick(60)
+
+
+if win == True:
+    message = 'You Win!!!'
+else:
+    message = 'You Lose.'
+
+
+#***** End game message *****
+while True:
+    # check if player closed game
+    for event in pygame.event.get():
+        if event.type == QUIT:
+            exit()
+
+    # fill screen with white then render background
+    screen.fill((255, 255, 255))
+    screen.blit(background, (0, 0))
+
+    # display winning/losing message
+    display(message)
+
+    pygame.display.update()
