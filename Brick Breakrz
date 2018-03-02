@@ -6,6 +6,9 @@ import random
 ENDGAME = False
 win = False
 
+# hold ball until player is ready
+hold_ball = True
+
 score = 0
 lives = 3
 
@@ -53,9 +56,30 @@ class Ball:
         '''redraws the ball'''
         screen.blit(ball_img, (self.x, self.y))
 
+    def check_ball(self):
+        '''resets ball, decrements lives, and returns true if
+           ball flew off the bottom side of the screen'''
+        global lives
+
+        if self.y > screen_height + 20:
+            lives -= 1
+
+            # place ball at a random coordinate inside the empty area
+            self.x = random.randint(100, screen_width - 100)
+            self.y = random.randint(200, screen_height - 200)
+
+            # set ball to go in random southern direction
+            direction = random.randint(1, 2)
+            if direction == 1:
+                self.angle = 'SE'
+            elif direction == 2:
+                self.angle = 'SW'
+
+            return True
+
     def hit_wall(self):
         '''changes direction of ball when it hits a block, wall,
-           or paddle. Ends game if ball goes off the screen'''
+           or paddle. Decreases lives if ball goes off the screen'''
 
         global lives
 
@@ -89,20 +113,14 @@ class Ball:
                 elif self.angle == 'SW':
                     self.angle = 'NW'
 
-        # reset ball and decrement lives if it flew off the bottom
-        elif self.y > screen_height + 20:
-            lives -= 1
+        # # taking place of paddle for debugging REMOVE FOR FINAL GAME
+        # if self.y >= paddle.y:
+        #     if self.angle == 'SE':
+        #         self.angle = 'NE'
+        #     elif self.angle == 'SW':
+        #         self.angle = 'NW'
 
-            # place ball at a random coordinate inside the empty area
-            self.x = random.randint(100, screen_width - 100)
-            self.y = random.randint(200, screen_height - 200)
 
-            # set ball to go in random southern direction
-            direction = random.randint(1, 2)
-            if direction == 1:
-                self.angle = 'SE'
-            elif direction == 2:
-                self.angle = 'SW'
 
 
 class Block:
@@ -128,7 +146,7 @@ class Block:
                 return True
 
             # touching top
-            elif ball.y <= self.y - ball.diameter and ball.y > self.y - ball.diameter - 1:
+            elif ball.y >= self.y - ball.diameter and ball.y <= self.y:
                 if ball.angle == 'SE':
                     ball.angle = 'NE'
                 elif ball.angle == 'SW':
@@ -171,11 +189,11 @@ class Paddle:
         screen.blit(paddle_img, (self.x, self.y))
 
 
-def display(message):
+def display(message, coords=(8,8), font=40, color=(175, 4, 4)):
     '''displays score and lives'''
-    font = pygame.font.Font(None, 40)
-    text = font.render(message, 1, (175, 4, 4))
-    screen.blit(text, (8, 8))
+    font = pygame.font.Font(None, font)
+    text = font.render(message, 1, color)
+    screen.blit(text, coords)
 
 def check_lives_and_score():
     '''checks if player has enough lives'''
@@ -244,6 +262,31 @@ ball = Ball()
 clock = pygame.time.Clock()
 
 
+#********** Start game message *****
+while True:
+    # check if player closed game
+    for event in pygame.event.get():
+        if event.type == QUIT:
+            exit()
+
+    # fill screen with white then render background
+    screen.fill((255, 255, 255))
+    screen.blit(background, (0, 0))
+
+    # display instructions
+    display('Instructions:', (50, 50), 36)
+    display('Use the mouse to keep the ball', (50, 80), 36)
+    display('on the screen using the paddle.', (50, 110), 36)
+    display('(Click to play)', (40, screen_height - 32))
+
+    # check for left click
+    left_click, middle_click, right_click = pygame.mouse.get_pressed()
+    if left_click == True:
+        break
+
+    pygame.display.update()
+
+
 #********* Game Loop **********
 while ENDGAME == False:
     # check if player closed game
@@ -256,9 +299,23 @@ while ENDGAME == False:
     screen.fill((255, 255, 255))
     screen.blit(background, (0,0))
 
-    ball.move()
+    left_click, middle_click, right_click = pygame.mouse.get_pressed()
+    if left_click == True:
+        hold_ball = False
+
+    if hold_ball == False:
+        ball.move()
+    else:
+        display('Click to release ball', (40, screen_height - 32))
+
     ball.update()
+
     ball.hit_wall()
+
+    ball_off_screen = ball.check_ball()
+
+    if ball_off_screen == True:
+        hold_ball = True
 
     paddle.update()
 
